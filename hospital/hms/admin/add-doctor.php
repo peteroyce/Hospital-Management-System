@@ -2,25 +2,43 @@
 session_start();
 error_reporting(0);
 include('include/config.php');
-if(strlen($_SESSION['id']==0)) {
- header('location:logout.php');
-  } else{
+if (empty($_SESSION['id'])) {
+    header('location:logout.php');
+    exit();
+} else {
 
-if(isset($_POST['submit']))
-{	$docspecialization=$_POST['Doctorspecialization'];
-$docname=$_POST['docname'];
-$docaddress=$_POST['clinicaddress'];
-$docfees=$_POST['docfees'];
-$doccontactno=$_POST['doccontact'];
-$docemail=$_POST['docemail'];
-$password=md5($_POST['npass']);
-$sql=mysqli_query($con,"insert into doctors(specilization,doctorName,address,docFees,contactno,docEmail,password) values('$docspecialization','$docname','$docaddress','$docfees','$doccontactno','$docemail','$password')");
-if($sql)
-{
-echo "<script>alert('Doctor info added Successfully');</script>";
-echo "<script>window.location.href ='manage-doctors.php'</script>";
+if (isset($_POST['submit'])) {
+    $docspecialization = trim($_POST['Doctorspecialization'] ?? '');
+    $docname           = trim($_POST['docname']             ?? '');
+    $docaddress        = trim($_POST['clinicaddress']       ?? '');
+    $docfees           = trim($_POST['docfees']             ?? '');
+    $doccontactno      = trim($_POST['doccontact']          ?? '');
+    $docemail          = trim($_POST['docemail']            ?? '');
+    $rawpass           = $_POST['npass']                    ?? '';
 
-}
+    if (!filter_var($docemail, FILTER_VALIDATE_EMAIL)) {
+        echo "<script>alert('Invalid email address.');</script>";
+    } elseif ($docname === '' || $docaddress === '' || $docfees === '' || $doccontactno === '' || $rawpass === '') {
+        echo "<script>alert('All fields are required.');</script>";
+    } else {
+        $password = md5($rawpass);
+        // Use a prepared statement to prevent SQL injection.
+        $stmt = mysqli_prepare($con, "INSERT INTO doctors (specilization, doctorName, address, docFees, contactno, docEmail, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'sssssss', $docspecialization, $docname, $docaddress, $docfees, $doccontactno, $docemail, $password);
+            if (mysqli_stmt_execute($stmt)) {
+                echo "<script>alert('Doctor info added Successfully');</script>";
+                echo "<script>window.location.href ='manage-doctors.php'</script>";
+            } else {
+                error_log('HMS add-doctor insert failed: ' . mysqli_stmt_error($stmt));
+                echo "<script>alert('Failed to add doctor. Please try again.');</script>";
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            error_log('HMS add-doctor prepare failed: ' . mysqli_error($con));
+            echo "<script>alert('A server error occurred. Please try again.');</script>";
+        }
+    }
 }
 ?>
 <!DOCTYPE html>

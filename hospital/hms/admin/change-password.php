@@ -2,28 +2,52 @@
 session_start();
 //error_reporting(0);
 include('include/config.php');
-if(strlen($_SESSION['id']==0)) {
- header('location:logout.php');
-  } else{
+if (empty($_SESSION['id'])) {
+    header('location:logout.php');
+    exit();
+} else {
 
 date_default_timezone_set('Asia/Kolkata');// change according timezone
 $currentTime = date( 'd-m-Y h:i:s A', time () );
-if(isset($_POST['submit']))
-{
-$cpass=$_POST['cpass'];	
-$uname=$_SESSION['login'];
-$sql=mysqli_query($con,"SELECT password FROM  admin where password='$cpass' && username='$uname'");
-$num=mysqli_fetch_array($sql);
-if($num>0)
-{
-$npass=$_POST['npass'];
- $con=mysqli_query($con,"update admin set password='$npass', updationDate='$currentTime' where username='$uname'");
-$_SESSION['msg1']="Password Changed Successfully !!";
-}
-else
-{
-$_SESSION['msg1']="Old Password not match !!";
-}
+if (isset($_POST['submit'])) {
+    $cpass = $_POST['cpass'] ?? '';
+    $npass = $_POST['npass'] ?? '';
+    $uname = $_SESSION['login'] ?? '';
+
+    if ($cpass === '' || $npass === '') {
+        $_SESSION['msg1'] = "All password fields are required.";
+    } elseif (strlen($npass) < 6) {
+        $_SESSION['msg1'] = "New password must be at least 6 characters.";
+    } else {
+        // Use prepared statement to prevent SQL injection.
+        $stmt = mysqli_prepare($con, "SELECT password FROM admin WHERE password = ? AND username = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ss', $cpass, $uname);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            $num    = mysqli_fetch_assoc($result);
+            mysqli_stmt_close($stmt);
+
+            if ($num) {
+                $upd = mysqli_prepare($con, "UPDATE admin SET password = ?, updationDate = ? WHERE username = ?");
+                if ($upd) {
+                    mysqli_stmt_bind_param($upd, 'sss', $npass, $currentTime, $uname);
+                    if (mysqli_stmt_execute($upd)) {
+                        $_SESSION['msg1'] = "Password Changed Successfully!";
+                    } else {
+                        error_log('HMS change-password update failed: ' . mysqli_stmt_error($upd));
+                        $_SESSION['msg1'] = "Failed to update password. Please try again.";
+                    }
+                    mysqli_stmt_close($upd);
+                }
+            } else {
+                $_SESSION['msg1'] = "Old password does not match.";
+            }
+        } else {
+            error_log('HMS change-password prepare failed: ' . mysqli_error($con));
+            $_SESSION['msg1'] = "A server error occurred. Please try again.";
+        }
+    }
 }
 ?>
 <!DOCTYPE html>

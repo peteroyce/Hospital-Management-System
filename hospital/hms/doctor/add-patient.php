@@ -2,9 +2,10 @@
 session_start();
 error_reporting(0);
 include('include/config.php');
-if(strlen($_SESSION['id']==0)) {
- header('location:logout.php');
-  } else{
+if (empty($_SESSION['id'])) {
+    header('location:logout.php');
+    exit();
+} else {
 
 if(isset($_POST['submit']))
 {	

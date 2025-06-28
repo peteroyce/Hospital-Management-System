@@ -2,25 +2,36 @@
 session_start();
 error_reporting(0);
 include("include/config.php");
-if(isset($_POST['submit']))
-{
-$uname=$_POST['username'];
-$upassword=$_POST['password'];
 
-$ret=mysqli_query($con,"SELECT * FROM admin WHERE username='$uname' and password='$upassword'");
-$num=mysqli_fetch_array($ret);
-if($num>0)
-{
-$_SESSION['login']=$_POST['username'];
-$_SESSION['id']=$num['id'];
-header("location:dashboard.php");
+if (isset($_POST['submit'])) {
+    $uname     = trim($_POST['username'] ?? '');
+    $upassword = $_POST['password'] ?? '';
 
-}
-else
-{
-$_SESSION['errmsg']="Invalid username or password";
+    if ($uname === '' || $upassword === '') {
+        $_SESSION['errmsg'] = "Username and password are required.";
+    } else {
+        // Use a prepared statement to prevent SQL injection.
+        $stmt = mysqli_prepare($con, "SELECT id, username FROM admin WHERE username = ? AND password = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ss', $uname, $upassword);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            $num    = mysqli_fetch_assoc($result);
+            mysqli_stmt_close($stmt);
 
-}
+            if ($num) {
+                $_SESSION['login'] = $uname;
+                $_SESSION['id']    = $num['id'];
+                header("location:dashboard.php");
+                exit();
+            } else {
+                $_SESSION['errmsg'] = "Invalid username or password.";
+            }
+        } else {
+            error_log('HMS admin login prepare failed: ' . mysqli_error($con));
+            $_SESSION['errmsg'] = "A server error occurred. Please try again.";
+        }
+    }
 }
 ?>
 
@@ -35,7 +46,7 @@ $_SESSION['errmsg']="Invalid username or password";
 		<meta name="apple-mobile-web-app-status-bar-style" content="black">
 		<meta content="" name="description" />
 		<meta content="" name="author" />
-		<link href="http://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic" rel="stylesheet" type="text/css" />
+		<link href="https://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic" rel="stylesheet" type="text/css" />
 		<link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
 		<link rel="stylesheet" href="vendor/fontawesome/css/font-awesome.min.css">
 		<link rel="stylesheet" href="vendor/themify-icons/themify-icons.min.css">
@@ -61,33 +72,33 @@ $_SESSION['errmsg']="Invalid username or password";
 							</legend>
 							<p>
 								Please enter your name and password to log in.<br />
-								<span style="color:red;"><?php echo htmlentities($_SESSION['errmsg']); ?><?php echo htmlentities($_SESSION['errmsg']="");?></span>
+								<span style="color:red;"><?php echo htmlspecialchars($_SESSION['errmsg'] ?? ''); ?><?php $_SESSION['errmsg'] = ''; ?></span>
 							</p>
 							<div class="form-group">
 								<span class="input-icon">
-									<input type="text" class="form-control" name="username" placeholder="Username">
+									<input type="text" class="form-control" name="username" placeholder="Username" required>
 									<i class="fa fa-user"></i> </span>
 							</div>
 							<div class="form-group form-actions">
 								<span class="input-icon">
-									<input type="password" class="form-control password" name="password" placeholder="Password"><i class="fa fa-lock"></i>
+									<input type="password" class="form-control password" name="password" placeholder="Password" required><i class="fa fa-lock"></i>
 									 </span>
 							</div>
 							<div class="form-actions">
-								
+
 								<button type="submit" class="btn btn-primary pull-right" name="submit">
 									Login <i class="fa fa-arrow-circle-right"></i>
 								</button>
 							</div>
-							<a href="../../index.php">Bacto Home Page</a>
-							
+							<a href="../../index.php">Back to Home Page</a>
+
 						</fieldset>
 					</form>
 
 					<div class="copyright">
 						<span class="text-bold text-uppercase">Hospital Management System</span>
 					</div>
-			
+
 				</div>
 
 			</div>
@@ -99,7 +110,7 @@ $_SESSION['errmsg']="Invalid username or password";
 		<script src="vendor/perfect-scrollbar/perfect-scrollbar.min.js"></script>
 		<script src="vendor/switchery/switchery.min.js"></script>
 		<script src="vendor/jquery-validation/jquery.validate.min.js"></script>
-	
+
 		<script src="assets/js/main.js"></script>
 
 		<script src="assets/js/login.js"></script>
@@ -109,7 +120,7 @@ $_SESSION['errmsg']="Invalid username or password";
 				Login.init();
 			});
 		</script>
-	
+
 	</body>
 	<!-- end: BODY -->
 </html>

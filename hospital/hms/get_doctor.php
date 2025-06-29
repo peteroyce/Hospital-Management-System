@@ -1,28 +1,35 @@
 <?php
 include('include/config.php');
-if(!empty($_POST["specilizationid"])) 
+if(!empty($_POST["specilizationid"]))
 {
-
- $sql=mysqli_query($con,"select doctorName,id from doctors where specilization='".$_POST['specilizationid']."'");?>
+ $stmt = $con->prepare("SELECT doctorName, id FROM doctors WHERE specilization = ?");
+ $stmt->bind_param("s", $_POST['specilizationid']);
+ $stmt->execute();
+ $result = $stmt->get_result();
+?>
  <option selected="selected">Select Doctor </option>
  <?php
- while($row=mysqli_fetch_array($sql))
+ while($row = $result->fetch_assoc())
  	{?>
   <option value="<?php echo htmlentities($row['id']); ?>"><?php echo htmlentities($row['doctorName']); ?></option>
   <?php
 }
+ $stmt->close();
 }
 
 
-if(!empty($_POST["doctor"])) 
+if(!empty($_POST["doctor"]))
 {
-
- $sql=mysqli_query($con,"select docFees from doctors where id='".$_POST['doctor']."'");
- while($row=mysqli_fetch_array($sql))
+ $stmt = $con->prepare("SELECT docFees FROM doctors WHERE id = ?");
+ $stmt->bind_param("s", $_POST['doctor']);
+ $stmt->execute();
+ $result = $stmt->get_result();
+ while($row = $result->fetch_assoc())
  	{?>
  <option value="<?php echo htmlentities($row['docFees']); ?>"><?php echo htmlentities($row['docFees']); ?></option>
   <?php
 }
+ $stmt->close();
 }
 
 ?>

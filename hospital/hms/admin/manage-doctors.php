@@ -10,8 +10,11 @@ if (empty($_SESSION['id'])) {
 
 if(isset($_GET['del']))
 		  {
-		  	$docid=$_GET['id'];
-		          mysqli_query($con,"delete from doctors where id ='$docid'");
+		  	$docid = intval($_GET['id']);
+		  	$stmt = $con->prepare("DELETE FROM doctors WHERE id = ?");
+		  	$stmt->bind_param("i", $docid);
+		  	$stmt->execute();
+		  	$stmt->close();
                   $_SESSION['msg']="data deleted !!";
 		  }
 ?>

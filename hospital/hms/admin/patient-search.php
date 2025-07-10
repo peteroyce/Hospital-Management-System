@@ -2,9 +2,10 @@
 session_start();
 error_reporting(0);
 include('include/config.php');
-if(strlen($_SESSION['id']==0)) {
- header('location:logout.php');
-  } else{
+if (empty($_SESSION['id'])) {
+    header('location:logout.php');
+    exit();
+} else {
 
 ?>
 <!DOCTYPE html>
@@ -67,12 +68,10 @@ Search
 </button>
 </form>
 <?php
-if(isset($_POST['search']))
-{ 
-
-$sdata=$_POST['searchdata'];
-  ?>
-  <h4 align="center">Result against "<?php echo $sdata;?>" keyword </h4>
+if (isset($_POST['search'])) {
+    $sdata = trim($_POST['searchdata'] ?? '');
+    ?>
+  <h4 align="center">Result against "<?php echo htmlspecialchars($sdata); ?>" keyword</h4>
 <table class="table table-hover" id="sample-table-1">
 <thead>
 <tr>
@@ -87,37 +86,46 @@ $sdata=$_POST['searchdata'];
 </thead>
 <tbody>
 <?php
-
-$sql=mysqli_query($con,"select * from tblpatient where PatientName like '%$sdata%'|| PatientContno like '%$sdata%'");
-$num=mysqli_num_rows($sql);
-if($num>0){
-$cnt=1;
-while($row=mysqli_fetch_array($sql))
-{
-?>
+    if ($sdata === '') {
+        echo '<tr><td colspan="8">Please enter a search term.</td></tr>';
+    } else {
+        // Use prepared statement with LIKE to prevent SQL injection.
+        $like  = '%' . $sdata . '%';
+        $stmt  = mysqli_prepare($con, "SELECT * FROM tblpatient WHERE PatientName LIKE ? OR PatientContno LIKE ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ss', $like, $like);
+            mysqli_stmt_execute($stmt);
+            $sql = mysqli_stmt_get_result($stmt);
+            $num = mysqli_num_rows($sql);
+            if ($num > 0) {
+                $cnt = 1;
+                while ($row = mysqli_fetch_assoc($sql)) {
+                    ?>
 <tr>
-<td class="center"><?php echo $cnt;?>.</td>
-<td class="hidden-xs"><?php echo $row['PatientName'];?></td>
-<td><?php echo $row['PatientContno'];?></td>
-<td><?php echo $row['PatientGender'];?></td>
-<td><?php echo $row['CreationDate'];?></td>
-<td><?php echo $row['UpdationDate'];?>
-</td>
+<td class="center"><?php echo $cnt; ?>.</td>
+<td class="hidden-xs"><?php echo htmlspecialchars($row['PatientName']); ?></td>
+<td><?php echo htmlspecialchars($row['PatientContno']); ?></td>
+<td><?php echo htmlspecialchars($row['PatientGender']); ?></td>
+<td><?php echo htmlspecialchars($row['CreationDate']); ?></td>
+<td><?php echo htmlspecialchars($row['UpdationDate']); ?></td>
 <td>
-
-<a href="view-patient.php?viewid=<?php echo $row['ID'];?>"><i class="fa fa-eye"></i></a>
-
+<a href="view-patient.php?viewid=<?php echo (int)$row['ID']; ?>"><i class="fa fa-eye"></i></a>
 </td>
 </tr>
-<?php 
-$cnt=$cnt+1;
-} } else { ?>
-  <tr>
-    <td colspan="8"> No record found against this search</td>
-
-  </tr>
-   
-<?php } }?></tbody>
+<?php
+                    $cnt++;
+                }
+            } else {
+                echo '<tr><td colspan="8">No record found against this search.</td></tr>';
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            error_log('HMS patient-search prepare failed: ' . mysqli_error($con));
+            echo '<tr><td colspan="8">A server error occurred.</td></tr>';
+        }
+    }
+    ?>
+<?php } ?></tbody>
 </table>
 </div>
 </div>

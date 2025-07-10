@@ -1,19 +1,39 @@
 <?php
 include_once('include/config.php');
-if(isset($_POST['submit']))
-{
-$fname=$_POST['full_name'];
-$address=$_POST['address'];
-$city=$_POST['city'];
-$gender=$_POST['gender'];
-$email=$_POST['email'];
-$password=md5($_POST['password']);
-$query=mysqli_query($con,"insert into users(fullname,address,city,gender,email,password) values('$fname','$address','$city','$gender','$email','$password')");
-if($query)
-{
-	echo "<script>alert('Successfully Registered. You can login now');</script>";
-	//header('location:user-login.php');
-}
+if (isset($_POST['submit'])) {
+    $fname    = trim($_POST['full_name'] ?? '');
+    $address  = trim($_POST['address']   ?? '');
+    $city     = trim($_POST['city']      ?? '');
+    $gender   = $_POST['gender']         ?? '';
+    $email    = trim($_POST['email']     ?? '');
+    $password = $_POST['password']       ?? '';
+
+    // Server-side validation.
+    $allowed_genders = ['male', 'female'];
+    if ($fname === '' || $address === '' || $city === '' || $email === '' || $password === '') {
+        echo "<script>alert('All fields are required.');</script>";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo "<script>alert('Invalid email address.');</script>";
+    } elseif (!in_array($gender, $allowed_genders, true)) {
+        echo "<script>alert('Please select a valid gender.');</script>";
+    } else {
+        $hashed = md5($password);
+        // Use a prepared statement to prevent SQL injection.
+        $stmt = mysqli_prepare($con, "INSERT INTO users (fullname, address, city, gender, email, password) VALUES (?, ?, ?, ?, ?, ?)");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ssssss', $fname, $address, $city, $gender, $email, $hashed);
+            if (mysqli_stmt_execute($stmt)) {
+                echo "<script>alert('Successfully Registered. You can login now');</script>";
+            } else {
+                error_log('HMS registration insert failed: ' . mysqli_stmt_error($stmt));
+                echo "<script>alert('Registration failed. Please try again.');</script>";
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            error_log('HMS registration prepare failed: ' . mysqli_error($con));
+            echo "<script>alert('A server error occurred. Please try again.');</script>";
+        }
+    }
 }
 ?>
 

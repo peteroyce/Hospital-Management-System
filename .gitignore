@@ -1,5 +1,9 @@
 *.log
 *.env
+.env
 vendor/
 .DS_Store
 Thumbs.db
+.sass-cache/
+*.css.map
+CLAUDE.md

@@ -2,35 +2,63 @@
 session_start();
 error_reporting(0);
 include("include/config.php");
-if(isset($_POST['submit']))
-{
-$puname=$_POST['username'];	
-$ppwd=md5($_POST['password']);
-$ret=mysqli_query($con,"SELECT * FROM users WHERE email='$puname' and password='$ppwd'");
-$num=mysqli_fetch_array($ret);
-if($num>0)
-{
-$_SESSION['login']=$_POST['username'];
-$_SESSION['id']=$num['id'];
-$pid=$num['id'];
-$host=$_SERVER['HTTP_HOST'];
-$uip=$_SERVER['REMOTE_ADDR'];
-$status=1;
-// For stroing log if user login successfull
-$log=mysqli_query($con,"insert into userlog(uid,username,userip,status) values('$pid','$puname','$uip','$status')");
-header("location:dashboard.php");
-}
-else
-{
-// For stroing log if user login unsuccessfull
-$_SESSION['login']=$_POST['username'];	
-$uip=$_SERVER['REMOTE_ADDR'];
-$status=0;
-mysqli_query($con,"insert into userlog(username,userip,status) values('$puname','$uip','$status')");
-$_SESSION['errmsg']="Invalid username or password";
 
-header("location:user-login.php");
-}
+if (isset($_POST['submit'])) {
+    $puname = trim($_POST['username'] ?? '');
+    $ppwd   = $_POST['password'] ?? '';
+
+    if ($puname === '' || $ppwd === '') {
+        $_SESSION['errmsg'] = "Email and password are required.";
+        header("location:user-login.php");
+        exit();
+    }
+
+    $ppwd_hashed = md5($ppwd);
+
+    // Use a prepared statement to prevent SQL injection.
+    $stmt = mysqli_prepare($con, "SELECT id, email FROM users WHERE email = ? AND password = ?");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, 'ss', $puname, $ppwd_hashed);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $num    = mysqli_fetch_assoc($result);
+        mysqli_stmt_close($stmt);
+
+        $uip = $_SERVER['REMOTE_ADDR'];
+
+        if ($num) {
+            $_SESSION['login'] = $puname;
+            $_SESSION['id']    = $num['id'];
+            $pid = $num['id'];
+            $status = 1;
+            // Log successful login.
+            $log_stmt = mysqli_prepare($con, "INSERT INTO userlog (uid, username, userip, status) VALUES (?, ?, ?, ?)");
+            if ($log_stmt) {
+                mysqli_stmt_bind_param($log_stmt, 'issi', $pid, $puname, $uip, $status);
+                mysqli_stmt_execute($log_stmt);
+                mysqli_stmt_close($log_stmt);
+            }
+            header("location:dashboard.php");
+            exit();
+        } else {
+            // Log failed login attempt.
+            $status = 0;
+            $log_stmt = mysqli_prepare($con, "INSERT INTO userlog (username, userip, status) VALUES (?, ?, ?)");
+            if ($log_stmt) {
+                mysqli_stmt_bind_param($log_stmt, 'ssi', $puname, $uip, $status);
+                mysqli_stmt_execute($log_stmt);
+                mysqli_stmt_close($log_stmt);
+            }
+            $_SESSION['errmsg'] = "Invalid username or password.";
+            header("location:user-login.php");
+            exit();
+        }
+    } else {
+        error_log('HMS user-login prepare failed: ' . mysqli_error($con));
+        $_SESSION['errmsg'] = "A server error occurred. Please try again.";
+        header("location:user-login.php");
+        exit();
+    }
 }
 ?>
 
@@ -39,8 +67,8 @@ header("location:user-login.php");
 <html lang="en">
 	<head>
 		<title>User-Login</title>
-		
-		<link href="http://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic" rel="stylesheet" type="text/css" />
+		<meta charset="utf-8" />
+		<link href="https://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic" rel="stylesheet" type="text/css" />
 		<link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
 		<link rel="stylesheet" href="vendor/fontawesome/css/font-awesome.min.css">
 		<link rel="stylesheet" href="vendor/themify-icons/themify-icons.min.css">
@@ -66,23 +94,23 @@ header("location:user-login.php");
 							</legend>
 							<p>
 								Please enter your name and password to log in.<br />
-								<span style="color:red;"><?php echo $_SESSION['errmsg']; ?><?php echo $_SESSION['errmsg']="";?></span>
+								<span style="color:red;"><?php echo htmlspecialchars($_SESSION['errmsg'] ?? ''); ?><?php $_SESSION['errmsg'] = ''; ?></span>
 							</p>
 							<div class="form-group">
 								<span class="input-icon">
-									<input type="text" class="form-control" name="username" placeholder="Username">
+									<input type="text" class="form-control" name="username" placeholder="Username" required>
 									<i class="fa fa-user"></i> </span>
 							</div>
 							<div class="form-group form-actions">
 								<span class="input-icon">
-									<input type="password" class="form-control password" name="password" placeholder="Password">
+									<input type="password" class="form-control password" name="password" placeholder="Password" required>
 									<i class="fa fa-lock"></i>
 									 </span><a href="forgot-password.php">
 									Forgot Password ?
 								</a>
 							</div>
 							<div class="form-actions">
-								
+
 								<button type="submit" class="btn btn-primary pull-right" name="submit">
 									Login <i class="fa fa-arrow-circle-right"></i>
 								</button>
@@ -97,9 +125,9 @@ header("location:user-login.php");
 					</form>
 
 					<div class="copyright">
-						</span><span class="text-bold text-uppercase"> Hospital Management System</span>.
+						<span class="text-bold text-uppercase"> Hospital Management System</span>
 					</div>
-			
+
 				</div>
 
 			</div>
@@ -111,7 +139,7 @@ header("location:user-login.php");
 		<script src="vendor/perfect-scrollbar/perfect-scrollbar.min.js"></script>
 		<script src="vendor/switchery/switchery.min.js"></script>
 		<script src="vendor/jquery-validation/jquery.validate.min.js"></script>
-	
+
 		<script src="assets/js/main.js"></script>
 
 		<script src="assets/js/login.js"></script>
@@ -121,7 +149,7 @@ header("location:user-login.php");
 				Login.init();
 			});
 		</script>
-	
+
 	</body>
 	<!-- end: BODY -->
 </html>

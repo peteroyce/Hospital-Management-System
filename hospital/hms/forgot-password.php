@@ -6,7 +6,10 @@ include("include/config.php");
 if(isset($_POST['submit'])){
 $name=$_POST['fullname'];
 $email=$_POST['email'];
-$query=mysqli_query($con,"select id from  users where fullName='$name' and email='$email'");
+$stmt=mysqli_prepare($con,"select id from users where fullName=? and email=?");
+mysqli_stmt_bind_param($stmt,"ss",$name,$email);
+mysqli_stmt_execute($stmt);
+$query=mysqli_stmt_get_result($stmt);
 $row=mysqli_num_rows($query);
 if($row>0){
 

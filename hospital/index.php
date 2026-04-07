@@ -7,7 +7,9 @@ $name=$_POST['fullname'];
 $email=$_POST['emailid'];
 $mobileno=$_POST['mobileno'];
 $dscrption=$_POST['description'];
-$query=mysqli_query($con,"insert into tblcontactus(fullname,email,contactno,message) value('$name','$email','$mobileno','$dscrption')");
+$stmt=mysqli_prepare($con,"insert into tblcontactus(fullname,email,contactno,message) value(?,?,?,?)");
+mysqli_stmt_bind_param($stmt,"ssss",$name,$email,$mobileno,$dscrption);
+mysqli_stmt_execute($stmt);
 echo "<script>alert('Your information succesfully submitted');</script>";
 echo "<script>window.location.href ='index.php'</script>";
 

@@ -12,12 +12,17 @@ if(isset($_POST['submit']))
 {
 $cpass=md5($_POST['cpass']);
 $did=$_SESSION['id'];
-$sql=mysqli_query($con,"SELECT password FROM  doctors where password='$cpass' && id='$did'");
+$stmt=mysqli_prepare($con,"SELECT password FROM doctors where password=? AND id=?");
+mysqli_stmt_bind_param($stmt,"ss",$cpass,$did);
+mysqli_stmt_execute($stmt);
+$sql=mysqli_stmt_get_result($stmt);
 $num=mysqli_fetch_array($sql);
 if($num>0)
 {
 $npass=md5($_POST['npass']);
- $con=mysqli_query($con,"update doctors set password='$npass', updationDate='$currentTime' where id='$did'");
+$stmt2=mysqli_prepare($con,"update doctors set password=?, updationDate=? where id=?");
+mysqli_stmt_bind_param($stmt2,"sss",$npass,$currentTime,$did);
+mysqli_stmt_execute($stmt2);
 $_SESSION['msg1']="Password Changed Successfully !!";
 }
 else
